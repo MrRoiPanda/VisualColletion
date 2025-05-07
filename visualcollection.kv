@@ -1,100 +1,76 @@
 #:import ButtonBehavior kivy.uix.behaviors.button.ButtonBehavior
 
+#:set TEXT_COLOR (0.922, 0.941, 0.953, 1.0)
+#:set BACKGROUND_COLOR (0.016, 0.020, 0.024, 1.0)
+#:set PRIMARY_COLOR (0.675, 0.745, 0.800, 1.0)
+#:set SECONDARY_COLOR (0.345, 0.251, 0.408, 1.0)
+#:set ACCENT_COLOR (0.651, 0.463, 0.671, 1.0)
+#:set CARD_BACKGROUND_COLOR (0.929, 0.953, 0.969, 0.05)
+
 # Main application layout
 <VisualCollectionApp>:
     MainLayout:
 
-<NewCollectionPopup>:
-    size_hint: 0.8, 0.9 # Adjusted for more content
-    auto_dismiss: False # User must explicitly close
-    title: "Create New Collection" # Title for the popup window
+<Label>: # Style de base pour tous les Labels
+    color: TEXT_COLOR
 
-    BoxLayout:
-        orientation: 'vertical'
-        padding: '10dp'
-        spacing: '10dp'
+<TextInput>: # Style de base
+    background_color: (0.05, 0.06, 0.07, 1) # Une couleur de fond légèrement différente
+    color: TEXT_COLOR
+    foreground_color: TEXT_COLOR
+    cursor_color: ACCENT_COLOR
+    #hint_text_color: (TEXT_COLOR[0], TEXT_COLOR[1], TEXT_COLOR[2], 0.5) # Texte d'aide semi-transparent
+    padding: [dp(6), dp(10), dp(6), dp(10)] # [gauche, haut, droite, bas]
 
-        Label:
-            text: root.title # Display the title
-            font_size: '20sp'
-            size_hint_y: None
-            height: self.texture_size[1] + dp(10)
-            halign: 'center'
+<Button>: # Style de base pour tous les Boutons
+    color: (0,0,0,1)
+    background_color: CARD_BACKGROUND_COLOR
+    canvas.before:
+        Color:
+            rgba: PRIMARY_COLOR
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [dp(5)]
 
+<Popup>: # Style de base pour tous les Popups
+    title_color: PRIMARY_COLOR
+    separator_color: ACCENT_COLOR
+    background: '' # Nécessaire pour que background_color fonctionne
+    background_color: BACKGROUND_COLOR # Couleur de fond du contenu du popup
+
+    # Le contenu du popup est souvent un BoxLayout, vous pouvez le styler aussi
+    BoxLayout: # Si votre popup contient directement un BoxLayout
+        canvas.before:
+            Color:
+                rgba: BACKGROUND_COLOR # ou une nuance
+            Rectangle:
+                pos: self.pos
+                size: self.size
+
+<MainLayout>:
+    orientation: 'vertical'
+    padding: '10dp'
+    spacing: '10dp'
+    background_color: BACKGROUND_COLOR
+
+    Button:
+        text: "New Collection"
+        size_hint_y: None
+        height: '48dp'
+        on_press: app.open_new_collection_popup()
+
+    ScrollView:
+        id: collection_scroll_view
+        size_hint_y: 0.8
+        do_scroll_x: False
         GridLayout:
-            cols: 2
-            spacing: ['10dp', '45dp'] # Increased vertical spacing
-            size_hint_y: None
-            height: self.minimum_height
-
-            Label:
-                text: "Name:"
-                size_hint_x: None
-                width: '100dp'
-            TextInput:
-                id: collection_name_input
-                hint_text: "Collection name"
-                multiline: False
-                size_hint_x: 1  # Make the button fill the horizontal space of its grid cell
-                size_hint_y: None # If you want to set a fixed height
-                height: '48dp'   # Example fixed height
-                hint_text: "Enter collection name" # Optional: placeholder text
-
-            Button:
-                text: "Select Folder..."
-                on_press: app.open_folder_chooser_popup()
-                size_hint_x: 1  # Make the button fill the horizontal space of its grid cell
-                size_hint_y: None # If you want to set a fixed height
-                height: '48dp'   # Example fixed height
-            Label: # To display the selected folder path
-                id: selected_folder_label
-                text: "No folder selected"
-                size_hint_y: None
-                height: self.texture_size[1]
-
-            Button:
-                id: image_button # Ensure this ID exists or is consistent
-                text: "Select Image..."
-                on_press: app.open_image_chooser_popup() # New app method
-                size_hint_x: 1
-                size_hint_y: None
-                height: '48dp'
-            Image:
-                id: image_preview
-                source: "assets/placeholder_popup.png"
-                size_hint: (1, None)
-                height: '56dp' # Adjust preview height to 16:9
-                allow_stretch: True
-                keep_ratio: True
-                fit_mode: "contain"
-            
-
-            Button:
-                id: tags_button # This ID is used in main.py
-                text: "Select Tags" # Initial text
-                size_hint_x: 1
-                size_hint_y: None
-                height: '48dp'
-                # The on_press is now handled in Python by binding to tags_dropdown.open
-
-        ScrollView: # In case content overflows
-            BoxLayout:
-                id: form_content # We might add more dynamic fields here
-                orientation: 'vertical'
-                size_hint_y: None
-                height: self.minimum_height
-                spacing: '5dp'
-
-        BoxLayout: # For bottom buttons
-            size_hint_y: None
-            height: '48dp'
-            spacing: '10dp'
-            Button:
-                text: "Cancel"
-                on_press: root.dismiss() # root refers to NewCollectionPopup
-            Button:
-                text: "Save"
-                on_press: app.save_collection(root.ids.collection_name_input.text, root) # Pass popup instance
+            id: collections_grid
+            cols: 5
+            spacing: dp(10)
+            padding: dp(10)
+            size_hint_y: None 
+            height: self.minimum_height 
 
 <CollectionCard@ButtonBehavior+BoxLayout>:
     orientation: 'vertical'
@@ -105,7 +81,7 @@
     on_press: app.open_collection_folder(root.folder_path)
     canvas.before:
         Color:
-            rgba: (0.25, 0.25, 0.25, 1) if self.state == 'down' else (0.2, 0.2, 0.2, 1)
+            rgba: CARD_BACKGROUND_COLOR 
         RoundedRectangle:
             size: self.size
             pos: self.pos
@@ -151,29 +127,103 @@
         height: self.minimum_height
         cols: 3  
         spacing: dp(4)
+    
 
-<MainLayout>:
-    orientation: 'vertical'
-    padding: '10dp'
-    spacing: '10dp'
+<NewCollectionPopup>:
+    size_hint: 0.8, 0.9 # Adjusted for more content
+    auto_dismiss: False # User must explicitly close
+    title: "Create New Collection" # Title for the popup window
 
-    Button:
-        text: "New Collection"
-        size_hint_y: None
-        height: '48dp'
-        on_press: app.open_new_collection_popup()
+    BoxLayout:
+        orientation: 'vertical'
+        padding: '10dp'
+        spacing: '10dp'
 
-    ScrollView:
-        id: collection_scroll_view
-        size_hint_y: 0.8
-        do_scroll_x: False
+        Label:
+            text: root.title # Display the title
+            font_size: '20sp'
+            size_hint_y: None
+            height: self.texture_size[1] + dp(10)
+            halign: 'center'
+
         GridLayout:
-            id: collections_grid
-            cols: 5
-            spacing: dp(10)
-            padding: dp(10)
-            size_hint_y: None 
-            height: self.minimum_height 
+            cols: 2
+            spacing: ['10dp', '45dp'] # Increased vertical spacing
+            size_hint_y: None
+            height: self.minimum_height
+
+            Label:
+                text: "Name:"
+                size_hint_x: None
+                width: '100dp'
+            TextInput:
+                id: collection_name_input
+                hint_text: "Collection name"
+                multiline: False
+                size_hint_x: 1  # Make the button fill the horizontal space of its grid cell
+                size_hint_y: None # If you want to set a fixed height
+                height: '48dp'   # Example fixed height
+                hint_text: "Enter collection name" # Optional: placeholder text
+
+            Button:
+                text: "Select Folder..."
+                on_press: app.open_folder_chooser_popup()
+                size_hint_x: 1  # Make the button fill the horizontal space of its grid cell
+                size_hint_y: None # If you want to set a fixed height
+                height: '48dp'   # Example fixed height
+
+            Label: # To display the selected folder path
+                id: selected_folder_label
+                text: "No folder selected"
+                size_hint_y: None
+                height: self.texture_size[1]
+
+            Button:
+                id: image_button # Ensure this ID exists or is consistent
+                text: "Select Image..."
+                on_press: app.open_image_chooser_popup() # New app method
+                size_hint_x: 1
+                size_hint_y: None
+                height: '48dp'
+
+            Image:
+                id: image_preview
+                source: "assets/placeholder_popup.png"
+                size_hint: (1, None)
+                height: '56dp' # Adjust preview height to 16:9
+                allow_stretch: True
+                keep_ratio: True
+                fit_mode: "contain"
+            
+
+            Button:
+                id: tags_button # This ID is used in main.py
+                text: "Select Tags" # Initial text
+                size_hint_x: 1
+                size_hint_y: None
+                height: '48dp'
+                # The on_press is now handled in Python by binding to tags_dropdown.open
+
+        ScrollView: # In case content overflows
+            BoxLayout:
+                id: form_content # We might add more dynamic fields here
+                orientation: 'vertical'
+                size_hint_y: None
+                height: self.minimum_height
+                spacing: '5dp'
+
+        BoxLayout: # For bottom buttons
+            size_hint_y: None
+            height: '48dp'
+            spacing: '10dp'
+            Button:
+                text: "Cancel"
+                on_press: root.dismiss() # root refers to NewCollectionPopup
+            Button:
+                text: "Save"
+                on_press: app.save_collection(root.ids.collection_name_input.text, root) # Pass popup instance
+
+
 
 # Popup for choosing a folder
 <FolderChooserPopup>:
