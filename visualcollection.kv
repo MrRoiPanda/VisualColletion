@@ -1,0 +1,272 @@
+#:import ButtonBehavior kivy.uix.behaviors.button.ButtonBehavior
+
+# Main application layout
+<VisualCollectionApp>:
+    MainLayout:
+
+<NewCollectionPopup>:
+    size_hint: 0.8, 0.9 # Adjusted for more content
+    auto_dismiss: False # User must explicitly close
+    title: "Créer une Nouvelle Collection" # Title for the popup window
+
+    BoxLayout:
+        orientation: 'vertical'
+        padding: '10dp'
+        spacing: '10dp'
+
+        Label:
+            text: root.title # Display the title
+            font_size: '20sp'
+            size_hint_y: None
+            height: self.texture_size[1] + dp(10)
+            halign: 'center'
+
+        GridLayout:
+            cols: 2
+            spacing: ['10dp', '45dp'] # Increased vertical spacing
+            size_hint_y: None
+            height: self.minimum_height
+
+            Label:
+                text: "Nom:"
+                size_hint_x: None
+                width: '100dp'
+            TextInput:
+                id: collection_name_input
+                hint_text: "Nom de la collection"
+                multiline: False
+                size_hint_x: 1  # Make the button fill the horizontal space of its grid cell
+                size_hint_y: None # If you want to set a fixed height
+                height: '48dp'   # Example fixed height
+                hint_text: "Entrez le nom de la collection" # Optional: placeholder text
+
+            Button:
+                text: "Sélectionner dossier..."
+                on_press: app.open_folder_chooser_popup()
+                size_hint_x: 1  # Make the button fill the horizontal space of its grid cell
+                size_hint_y: None # If you want to set a fixed height
+                height: '48dp'   # Example fixed height
+            Label: # To display the selected folder path
+                id: selected_folder_label
+                text: "Aucun dossier sélectionné"
+                size_hint_y: None
+                height: self.texture_size[1]
+
+            Button:
+                id: image_button # Ensure this ID exists or is consistent
+                text: "Sélectionner image..."
+                on_press: app.open_image_chooser_popup() # New app method
+                size_hint_x: 1
+                size_hint_y: None
+                height: '48dp'
+            Image:
+                id: image_preview
+                source: "assets/placeholder_popup.png"
+                size_hint: (1, None)
+                height: '56dp' # Adjust preview height to 16:9
+                allow_stretch: True
+                keep_ratio: True
+                fit_mode: "contain"
+            
+
+            Button:
+                id: tags_button # This ID is used in main.py
+                text: "Sélectionner tags" # Initial text
+                size_hint_x: 1
+                size_hint_y: None
+                height: '48dp'
+                # The on_press is now handled in Python by binding to tags_dropdown.open
+
+        ScrollView: # In case content overflows
+            BoxLayout:
+                id: form_content # We might add more dynamic fields here
+                orientation: 'vertical'
+                size_hint_y: None
+                height: self.minimum_height
+                spacing: '5dp'
+
+        BoxLayout: # For bottom buttons
+            size_hint_y: None
+            height: '48dp'
+            spacing: '10dp'
+            Button:
+                text: "Annuler"
+                on_press: root.dismiss() # root refers to NewCollectionPopup
+            Button:
+                text: "Sauvegarder"
+                on_press: app.save_collection(root.ids.collection_name_input.text, root) # Pass popup instance
+
+<CollectionCard@ButtonBehavior+BoxLayout>:
+    orientation: 'vertical'
+    size_hint_y: None
+    height: self.minimum_height
+    padding: dp(5)
+    spacing: dp(5)
+    on_press: app.open_collection_folder(root.folder_path)
+    canvas.before:
+        Color:
+            rgba: (0.25, 0.25, 0.25, 1) if self.state == 'down' else (0.2, 0.2, 0.2, 1)
+        RoundedRectangle:
+            size: self.size
+            pos: self.pos
+            radius: [dp(12),] # Augmentation du rayon pour la carte
+
+    RelativeLayout: # Conteneur pour l'image
+        id: image_container 
+        size_hint_y: None 
+        height: self.width * (9/16) 
+
+        AsyncImage:
+            id: collection_image
+            source: root.image_source if root.image_source else "assets/placeholder.png"
+            allow_stretch: True
+            keep_ratio: False 
+            fit_mode: 'cover'
+            size_hint: (1,1) 
+            pos_hint: {'center_x': 0.5, 'center_y': 0.5} 
+            canvas.before:
+                StencilPush
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [dp(6),] 
+                StencilUse
+            canvas.after:
+                StencilUnUse
+                StencilPop
+
+    Label:
+        text: root.collection_name
+        size_hint_y: None 
+        height: self.texture_size[1] + dp(10) 
+        text_size: self.width - dp(10), None 
+        halign: 'center'
+        valign: 'middle'
+        shorten: True
+        shorten_from: 'right'
+
+    GridLayout:
+        id: tags_container
+        size_hint_y: None
+        height: self.minimum_height
+        cols: 3  
+        spacing: dp(4)
+
+<MainLayout>:
+    orientation: 'vertical'
+    padding: '10dp'
+    spacing: '10dp'
+
+    Button:
+        text: "Nouvelle Collection"
+        size_hint_y: None
+        height: '48dp'
+        on_press: app.open_new_collection_popup()
+
+    ScrollView:
+        id: collection_scroll_view
+        size_hint_y: 0.8
+        do_scroll_x: False
+        GridLayout:
+            id: collections_grid
+            cols: 5
+            spacing: dp(10)
+            padding: dp(10)
+            size_hint_y: None 
+            height: self.minimum_height 
+
+# Popup for choosing a folder
+<FolderChooserPopup>:
+    size_hint: 0.9, 0.9
+    auto_dismiss: False
+    title: "Sélectionner un dossier"
+
+    BoxLayout:
+        orientation: 'vertical'
+        padding: '10dp'
+        spacing: '10dp'
+
+        Label:
+            text: root.title
+            font_size: '20sp'
+            size_hint_y: None
+            height: self.texture_size[1] + dp(10)
+            halign: 'center'
+
+        FileChooserListView:
+            id: filechooser
+            dirselect: True  
+            path: "./"  
+
+        BoxLayout:
+            size_hint_y: None
+            height: '48dp'
+            spacing: '10dp'
+            Button:
+                text: "Annuler"
+                on_press: root.dismiss()
+            Button:
+                text: "Sélectionner"
+                on_press: app.select_folder(filechooser.selection, root)
+
+# Popup for choosing an image file
+<ImageChooserPopup@ModalView>:
+    size_hint: 0.9, 0.9
+    auto_dismiss: False
+    title: "Sélectionner une image de couverture"
+    BoxLayout:
+        orientation: 'vertical'
+        FileChooserIconView:
+            id: imagefilechooser
+            path: './' 
+            filters: ["*.png", "*.jpg", "*.jpeg", "*.gif", "*.bmp"] 
+        BoxLayout:
+            size_hint_y: None
+            height: '48dp'
+            Button:
+                text: "Annuler"
+                on_press: root.dismiss()
+            Button:
+                text: "Sélectionner Image"
+                on_press: app.select_image(imagefilechooser.selection, root)
+
+# Popup for creating a new tag
+<NewTagPopup>:
+    size_hint: 0.6, 0.4
+    auto_dismiss: False
+    title: "Créer un Nouveau Tag"
+    BoxLayout:
+        orientation: 'vertical'
+        padding: '10dp'
+        spacing: '10dp'
+
+        Label:
+            text: "Nom du nouveau tag:"
+            size_hint_y: None
+            height: self.texture_size[1]
+
+        TextInput:
+            id: new_tag_name_input
+            multiline: False
+            hint_text: "Entrez le nom du tag"
+            size_hint_y: None
+            height: '40dp'
+            on_text_validate: app.save_new_tag_from_popup(self.text, root) 
+
+        Label: 
+            id: new_tag_feedback_label
+            text: "" 
+            size_hint_y: None
+            height: self.texture_size[1]
+            color: (1,0,0,1) 
+
+        BoxLayout:
+            size_hint_y: None
+            height: '48dp'
+            spacing: '10dp'
+            Button:
+                text: "Annuler"
+                on_press: root.dismiss()
+            Button:
+                text: "Sauvegarder Tag"
+                on_press: app.save_new_tag_from_popup(new_tag_name_input.text, root)
