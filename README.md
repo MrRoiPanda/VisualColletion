@@ -14,7 +14,7 @@ Visual Collection Manager is a Python desktop application designed to help users
 
 ## Visual Preview
 
-(Add a screenshot or GIF of the application here)
+![Application Preview](image.png)
 
 ## Technologies Used
 
@@ -64,3 +64,45 @@ Contributions are welcome! If you'd like to contribute, please follow these step
 3.  Commit your Changes (`git commit -m 'Add some AmazingFeature'`).
 4.  Push to the Branch (`git push origin feature/AmazingFeature`).
 5.  Open a PullRequest.
+
+## License
+
+Distributed under the MIT License. See `LICENSE.txt` for more information. (You will need to create a LICENSE.txt file if you choose this license).
+
+---
+
+*Inspired by interfaces like Hitomi Downloader for a clean and aesthetic user experience.*
+
+1. J'aimerais crée cet app en python, mais j'aimerais quand même un rendu esthétique de l'app
+Mon inspiration serais visuelle serais : https://github.com/KurtBestor/Hitomi-Downloader
+2. Fonctionnalité :
+- J'aimerais un Button "Nouvelle Collection" -> Qui ouvre un menu avec des champ a completer :
+    
+    "nom" -> un champ de texte
+    
+    "chemain du dossier" -> Sélection depuis l'ordinateur et/ou glisser-déposer
+    
+    "image de couverture" -> Sélection depuis l'ordinateur et/ou glisser-déposer
+    
+    "tags" -> sélecteur de un ou plusieurs de tags
+    
+- Un section qui affiche des cardes de tout les Collections
+
+1. J'aimerais que mon application garde dans ses dossier plusieurs Base de donnée :
+
+Base de données des collections
+
+| id | nom                | chemin du dossier     | image de couverture | Date de création | tags     |
+| -- | ------------------ | --------------------- | ------------------- | ---------------- | -------- |
+| 1  | Ma Collection A    | /chemin/vers/dossierA | /images/coverA.jpg  | 2025-05-07       | 1, 2     |
+| 2  | Anciennes Affiches | /chemin/vers/dossierB | /images/coverB.png  | 2024-12-15       | 3        |
+| 3  | Objets Rares       | /chemin/vers/dossierC | /images/coverC.webp | 2023-10-21       | 2, 4     |
+
+Base de données des tags
+
+| tags\_id | name           |
+| -------- | -------------- |
+| 1        | illustration   |
+| 2        | années 80      |
+| 3        | affiche cinéma |
+| 4        | objet ancien   |
