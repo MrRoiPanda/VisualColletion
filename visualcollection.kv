@@ -7,7 +7,7 @@
 <NewCollectionPopup>:
     size_hint: 0.8, 0.9 # Adjusted for more content
     auto_dismiss: False # User must explicitly close
-    title: "Créer une Nouvelle Collection" # Title for the popup window
+    title: "Create New Collection" # Title for the popup window
 
     BoxLayout:
         orientation: 'vertical'
@@ -28,33 +28,33 @@
             height: self.minimum_height
 
             Label:
-                text: "Nom:"
+                text: "Name:"
                 size_hint_x: None
                 width: '100dp'
             TextInput:
                 id: collection_name_input
-                hint_text: "Nom de la collection"
+                hint_text: "Collection name"
                 multiline: False
                 size_hint_x: 1  # Make the button fill the horizontal space of its grid cell
                 size_hint_y: None # If you want to set a fixed height
                 height: '48dp'   # Example fixed height
-                hint_text: "Entrez le nom de la collection" # Optional: placeholder text
+                hint_text: "Enter collection name" # Optional: placeholder text
 
             Button:
-                text: "Sélectionner dossier..."
+                text: "Select Folder..."
                 on_press: app.open_folder_chooser_popup()
                 size_hint_x: 1  # Make the button fill the horizontal space of its grid cell
                 size_hint_y: None # If you want to set a fixed height
                 height: '48dp'   # Example fixed height
             Label: # To display the selected folder path
                 id: selected_folder_label
-                text: "Aucun dossier sélectionné"
+                text: "No folder selected"
                 size_hint_y: None
                 height: self.texture_size[1]
 
             Button:
                 id: image_button # Ensure this ID exists or is consistent
-                text: "Sélectionner image..."
+                text: "Select Image..."
                 on_press: app.open_image_chooser_popup() # New app method
                 size_hint_x: 1
                 size_hint_y: None
@@ -71,7 +71,7 @@
 
             Button:
                 id: tags_button # This ID is used in main.py
-                text: "Sélectionner tags" # Initial text
+                text: "Select Tags" # Initial text
                 size_hint_x: 1
                 size_hint_y: None
                 height: '48dp'
@@ -90,10 +90,10 @@
             height: '48dp'
             spacing: '10dp'
             Button:
-                text: "Annuler"
+                text: "Cancel"
                 on_press: root.dismiss() # root refers to NewCollectionPopup
             Button:
-                text: "Sauvegarder"
+                text: "Save"
                 on_press: app.save_collection(root.ids.collection_name_input.text, root) # Pass popup instance
 
 <CollectionCard@ButtonBehavior+BoxLayout>:
@@ -158,7 +158,7 @@
     spacing: '10dp'
 
     Button:
-        text: "Nouvelle Collection"
+        text: "New Collection"
         size_hint_y: None
         height: '48dp'
         on_press: app.open_new_collection_popup()
@@ -179,7 +179,7 @@
 <FolderChooserPopup>:
     size_hint: 0.9, 0.9
     auto_dismiss: False
-    title: "Sélectionner un dossier"
+    title: "Select a Folder"
 
     BoxLayout:
         orientation: 'vertical'
@@ -203,17 +203,18 @@
             height: '48dp'
             spacing: '10dp'
             Button:
-                text: "Annuler"
+                text: "Cancel"
                 on_press: root.dismiss()
             Button:
-                text: "Sélectionner"
+                text: "Select"
                 on_press: app.select_folder(filechooser.selection, root)
 
 # Popup for choosing an image file
 <ImageChooserPopup@ModalView>:
     size_hint: 0.9, 0.9
     auto_dismiss: False
-    title: "Sélectionner une image de couverture"
+    title: "Select an Image"
+
     BoxLayout:
         orientation: 'vertical'
         FileChooserIconView:
@@ -224,31 +225,32 @@
             size_hint_y: None
             height: '48dp'
             Button:
-                text: "Annuler"
+                text: "Cancel"
                 on_press: root.dismiss()
             Button:
-                text: "Sélectionner Image"
+                text: "Select Image"
                 on_press: app.select_image(imagefilechooser.selection, root)
 
 # Popup for creating a new tag
 <NewTagPopup>:
     size_hint: 0.6, 0.4
     auto_dismiss: False
-    title: "Créer un Nouveau Tag"
+    title: "Add New Tag"
+
     BoxLayout:
         orientation: 'vertical'
         padding: '10dp'
         spacing: '10dp'
 
         Label:
-            text: "Nom du nouveau tag:"
+            text: "Enter a name for the new tag:"
             size_hint_y: None
             height: self.texture_size[1]
 
         TextInput:
             id: new_tag_name_input
+            hint_text: "Tag name"
             multiline: False
-            hint_text: "Entrez le nom du tag"
             size_hint_y: None
             height: '40dp'
             on_text_validate: app.save_new_tag_from_popup(self.text, root) 
@@ -265,8 +267,8 @@
             height: '48dp'
             spacing: '10dp'
             Button:
-                text: "Annuler"
+                text: "Cancel"
                 on_press: root.dismiss()
             Button:
-                text: "Sauvegarder Tag"
+                text: "Save Tag"
                 on_press: app.save_new_tag_from_popup(new_tag_name_input.text, root)

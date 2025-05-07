@@ -162,12 +162,12 @@ class VisualCollectionApp(App):
         self.create_tags_dropdown(popup)
         if hasattr(popup.ids, 'tags_button'):
             popup.ids.tags_button.bind(on_release=self.tags_dropdown.open)
-            popup.ids.tags_button.text = "Sélectionner tags"
+            popup.ids.tags_button.text = "Select Tags"
         else:
             print("Warning: 'tags_button' not found in NewCollectionPopup ids.")
         
         if hasattr(popup.ids, 'selected_folder_label'):
-            popup.ids.selected_folder_label.text = "Aucun dossier sélectionné"
+            popup.ids.selected_folder_label.text = "No folder selected"
         self.selected_folder_path = None
         
         popup.open()
@@ -187,7 +187,7 @@ class VisualCollectionApp(App):
             btn.bind(on_release=lambda btn_instance, tn=tag_name: self.toggle_tag_selection(tn, main_popup_instance.ids.tags_button))
             self.tags_dropdown.add_widget(btn)
         
-        add_new_tag_btn = Button(text="Créer nouveau tag...", size_hint_y=None, height='44dp')
+        add_new_tag_btn = Button(text="Create new tag...", size_hint_y=None, height='44dp')
         add_new_tag_btn.bind(on_release=self.prompt_for_new_tag)
         self.tags_dropdown.add_widget(add_new_tag_btn)
 
@@ -215,9 +215,9 @@ class VisualCollectionApp(App):
             main_tags_button_instance: The button widget to update.
         """
         if not self.selected_tags_for_new_collection:
-            main_tags_button_instance.text = "Sélectionner tags"
+            main_tags_button_instance.text = "Select Tags"
         else:
-            main_tags_button_instance.text = f"Tags: {', '.join(sorted(list(self.selected_tags_for_new_collection)))}"
+            main_tags_button_instance.text = ", ".join(self.selected_tags_for_new_collection)
 
     def prompt_for_new_tag(self, instance):
         """
@@ -245,46 +245,63 @@ class VisualCollectionApp(App):
         if not tag_name_to_save:
             print("New tag name cannot be empty.")
             if hasattr(new_tag_popup_instance.ids, 'new_tag_feedback_label'):
-                new_tag_popup_instance.ids.new_tag_feedback_label.text = "Le nom du tag ne peut pas être vide!"
+                new_tag_popup_instance.ids.new_tag_feedback_label.text = "New tag name cannot be empty."
             return
 
         try:
             success = add_new_tag(tag_name_to_save)
             if success:
-                print(f"Tag '{tag_name_to_save}' added to database.")
+                print(f"Tag '{tag_name_to_save}' added successfully.")
+                if hasattr(new_tag_popup_instance.ids, 'new_tag_feedback_label'):
+                    new_tag_popup_instance.ids.new_tag_feedback_label.text = f"Tag '{tag_name_to_save}' added."
+                
                 self.selected_tags_for_new_collection.add(tag_name_to_save)
+                
+                # Dynamically add the new tag button to the existing dropdown
+                if self.tags_dropdown and self.current_new_collection_popup:
+                    new_tag_button = Button(
+                        text=tag_name_to_save, 
+                        size_hint_y=None, 
+                        height='44dp'
+                    )
+                    new_tag_button.bind(on_release=lambda btn_instance, tn=tag_name_to_save: self.toggle_tag_selection(tn, self.current_new_collection_popup.ids.tags_button))
+                    
+                    # Insert before the "Create new tag..." button if possible
+                    if self.tags_dropdown.children:
+                        # The last child is the "Create new tag..." button
+                        # We want to insert the new tag before it.
+                        # Children are in reverse order of addition for DropDown, so add to index 1 to place before last item (index 0)
+                        self.tags_dropdown.add_widget(new_tag_button, index=len(self.tags_dropdown.children))
+
+                    else:
+                        self.tags_dropdown.add_widget(new_tag_button)
+
+                # Update the main tags button text in the NewCollectionPopup
                 if self.current_new_collection_popup and hasattr(self.current_new_collection_popup.ids, 'tags_button'):
                     self.update_main_tags_button_text(self.current_new_collection_popup.ids.tags_button)
-                
-                # Dynamically add to the existing dropdown for immediate use
-                # Ensure self.tags_dropdown.container exists before accessing its children
-                tag_exists_in_dropdown = False
-                if self.tags_dropdown and self.tags_dropdown.container:
-                    tag_exists_in_dropdown = any(isinstance(btn, Button) and btn.text == tag_name_to_save for btn in self.tags_dropdown.container.children)
-                
-                if not tag_exists_in_dropdown and self.tags_dropdown and self.tags_dropdown.container and self.current_new_collection_popup:
-                    new_btn_for_dropdown = Button(text=tag_name_to_save, size_hint_y=None, height='44dp')
-                    new_btn_for_dropdown.bind(on_release=lambda btn_instance, tn=tag_name_to_save: self.toggle_tag_selection(tn, self.current_new_collection_popup.ids.tags_button))
-                    
-                    # Find the "Créer nouveau tag..." button to insert before it
-                    insert_index = len(self.tags_dropdown.container.children)
-                    for i, child_btn in enumerate(self.tags_dropdown.container.children):
-                        if isinstance(child_btn, Button) and child_btn.text == "Créer nouveau tag...":
-                            insert_index = i
-                            break
-                    self.tags_dropdown.add_widget(new_btn_for_dropdown, index=insert_index) # add_widget on DropDown itself handles placing in container
 
-                new_tag_popup_instance.dismiss()
-                self.current_new_tag_popup = None
+                # Optionally close the "new tag" popup after a short delay or immediately
+                Clock.schedule_once(lambda dt: new_tag_popup_instance.dismiss(), 0.5) # Dismiss after 0.5 seconds
+
             else:
-                print(f"Failed to add tag '{tag_name_to_save}' to database or it already exists with different case.")
+                # add_new_tag returns False if tag exists or on error
+                # Check if feedback label exists before trying to set its text
                 if hasattr(new_tag_popup_instance.ids, 'new_tag_feedback_label'):
-                    new_tag_popup_instance.ids.new_tag_feedback_label.text = f"Impossible d'ajouter '{tag_name_to_save}'. Existe déjà?"
+                    # More specific feedback could be provided by add_new_tag if needed
+                    # For now, assume it's because the tag exists or a generic error
+                    # We might need to refine add_new_tag to return different values for different errors
+                    # Check if the tag truly exists, if add_new_tag just prints but returns False for existing
+                    from database import get_all_tags as check_tags # avoid circular import issues if any
+                    if tag_name_to_save.lower() in [t.lower() for t in check_tags()]:
+                        new_tag_popup_instance.ids.new_tag_feedback_label.text = "Tag already exists."
+                    else:
+                        new_tag_popup_instance.ids.new_tag_feedback_label.text = "Error adding tag."
+                print(f"Failed to add tag '{tag_name_to_save}'. It might already exist or there was a DB error.")
 
         except Exception as e:
             print(f"Error adding new tag: {e}")
             if hasattr(new_tag_popup_instance.ids, 'new_tag_feedback_label'):
-                new_tag_popup_instance.ids.new_tag_feedback_label.text = "Erreur lors de l'ajout du tag."
+                new_tag_popup_instance.ids.new_tag_feedback_label.text = "Error adding tag."
 
     def open_folder_chooser_popup(self):
         """
@@ -307,25 +324,17 @@ class VisualCollectionApp(App):
             self.selected_folder_path = selection[0]
             print(f"Selected folder: {self.selected_folder_path}")
             if self.current_new_collection_popup:
-                # Mettre à jour le label affichant le dossier sélectionné
-                if 'selected_folder_label' in self.current_new_collection_popup.ids:
+                # Update the label in the main collection popup
+                if self.current_new_collection_popup and hasattr(self.current_new_collection_popup.ids, 'selected_folder_label'):
                     self.current_new_collection_popup.ids.selected_folder_label.text = self.selected_folder_path
                 
-                # Pré-remplir le nom de la collection si vide
-                collection_name_widget = self.current_new_collection_popup.ids.get('collection_name_input')
-                if collection_name_widget and not collection_name_widget.text.strip(): 
-                    folder_name = os.path.basename(self.selected_folder_path)
-                    collection_name_widget.text = folder_name
-                    print(f"Pre-filled collection name with folder name: {folder_name}")
-            else:
-                print("Warning: current_new_collection_popup not found when trying to pre-fill name.")
-        else:
-            self.selected_folder_path = None 
-            if self.current_new_collection_popup and 'selected_folder_label' in self.current_new_collection_popup.ids:
-                self.current_new_collection_popup.ids.selected_folder_label.text = "Aucun dossier sélectionné"
-        
-        folder_popup_instance.dismiss()
+                # Attempt to pre-fill collection name based on folder name
+                if self.current_new_collection_popup and hasattr(self.current_new_collection_popup.ids, 'collection_name_input'):
+                    base_folder_name = os.path.basename(self.selected_folder_path)
+                    self.current_new_collection_popup.ids.collection_name_input.text = base_folder_name
+                    self.current_new_collection_popup.ids.collection_name_input.hint_text = "Name based on folder"
 
+        folder_popup_instance.dismiss()
 
     def get_selected_folder_path(self):
         """
@@ -373,38 +382,37 @@ class VisualCollectionApp(App):
 
         if not nom_collection:
             print("Collection name cannot be empty.")
-            # Optionnel : Afficher un message dans le popup
-            if hasattr(new_collection_popup_instance.ids, 'feedback_label_collection_name'): 
-                new_collection_popup_instance.ids.feedback_label_collection_name.text = "Le nom de la collection ne peut pas être vide !"
-            return # Arrêter la sauvegarde
+            if hasattr(new_collection_popup_instance.ids, 'feedback_label'): # Assuming feedback_label exists
+                new_collection_popup_instance.ids.feedback_label.text = "Collection name cannot be empty."
+            return
 
-        
-        tags_to_save_str = ",".join(sorted(list(self.selected_tags_for_new_collection)))
-        print(f"Selected tags: {tags_to_save_str}")
-        
-        actual_folder_path = self.selected_folder_path if self.selected_folder_path else "/chemin/non/defini"
-        print(f"Folder path: {actual_folder_path}")
+        if not self.selected_folder_path:
+            print("Folder path cannot be empty.")
+            if hasattr(new_collection_popup_instance.ids, 'feedback_label'):
+                new_collection_popup_instance.ids.feedback_label.text = "Please select a folder."
+            return
 
-        # actual_image_path = self.selected_image_path if self.selected_image_path else "/image/non/definie.jpg" # Old way
-        actual_image_path = self.selected_image_path if self.selected_image_path else "" # New way: save empty string
-        print(f"Image path for DB: '{actual_image_path}'") # Added quote for clarity
+        if not self.selected_image_path:
+            print("Cover image path cannot be empty.")
+            if hasattr(new_collection_popup_instance.ids, 'feedback_label'):
+                new_collection_popup_instance.ids.feedback_label.text = "Please select a cover image."
+            return
 
-        try:
-            collection_id = add_collection_to_db(nom, actual_folder_path, actual_image_path, tags_to_save_str)
-            if collection_id:
-                print(f"Collection '{nom}' added with ID: {collection_id}")
-            else:
-                print("Failed to add collection to database.")
-        except Exception as e:
-            print(f"Error saving collection: {e}")
+        tags_string = ",".join(self.selected_tags_for_new_collection)
 
-        new_collection_popup_instance.dismiss()
-        self.current_new_collection_popup = None
-        self.selected_folder_path = None
-        self.selected_image_path = None 
-        self.selected_tags_for_new_collection.clear()
-        self.populate_collections_grid() # <--- AJOUTEZ CETTE LIGNE
-    
+        collection_id = add_collection_to_db(nom_collection, self.selected_folder_path, self.selected_image_path, tags_string)
+
+        if collection_id:
+            print(f"Collection '{nom_collection}' added successfully with ID: {collection_id}")
+            if hasattr(new_collection_popup_instance.ids, 'feedback_label'):
+                new_collection_popup_instance.ids.feedback_label.text = f"Collection '{nom_collection}' added successfully."
+            new_collection_popup_instance.dismiss()
+            self.populate_collections_grid()
+        else:
+            print(f"Error saving collection '{nom_collection}'.")
+            if hasattr(new_collection_popup_instance.ids, 'feedback_label'):
+                new_collection_popup_instance.ids.feedback_label.text = "Error saving collection."
+
     def populate_collections_grid(self):
         """
         Populates the main grid layout with CollectionCard widgets
