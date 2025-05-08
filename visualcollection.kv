@@ -246,7 +246,9 @@
         FileChooserListView:
             id: filechooser
             dirselect: True  
-            path: "./"  
+            path: "E://"  
+            #on_selection: app.select_folder(filechooser.selection)
+
 
         BoxLayout:
             size_hint_y: None
@@ -257,7 +259,7 @@
                 on_press: root.dismiss()
             Button:
                 text: "Select"
-                on_press: app.select_folder(filechooser.selection, root)
+                on_release: app.confirm_folder_selection(filechooser.selection)
 
 # Popup for choosing an image file
 <ImageChooserPopup@ModalView>:

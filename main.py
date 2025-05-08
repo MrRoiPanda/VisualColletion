@@ -129,6 +129,8 @@ class VisualCollectionApp(App):
     selected_tags_for_new_collection = set()
     current_new_tag_popup = None
     selected_image_path = None
+    current_folder_chooser_popup = None 
+    current_image_chooser_popup = None 
 
     def build(self):
         """
@@ -143,6 +145,8 @@ class VisualCollectionApp(App):
         Used here to populate the initial collection grid.
         """
         self.populate_collections_grid()
+        self.current_folder_chooser_popup = None
+        self.current_image_chooser_popup = None
 
 
     def open_new_collection_popup(self):
@@ -305,113 +309,209 @@ class VisualCollectionApp(App):
 
     def open_folder_chooser_popup(self):
         """
-        Opens a popup dialog for the user to select a folder for the new collection.
+        Ouvre la popup pour choisir un dossier.
         """
-        folder_popup = FolderChooserPopup()
-        folder_popup.open()
+        if self.current_folder_chooser_popup:
+            self.current_folder_chooser_popup.dismiss()
+        
+        popup = FolderChooserPopup()
+        try:
+            default_path = os.path.expanduser("E:\\") # Dossier personnel de l'utilisateur
+            if hasattr(popup.ids, 'filechooser') and hasattr(popup.ids.filechooser, 'path'):
+                popup.ids.filechooser.path = default_path
+            else:
+                print("Warning: Could not set default path for FolderChooserPopup. 'filechooser' or its 'path' attribute not found.")
+        except Exception as e:
+            print(f"Error setting default path for FolderChooserPopup: {e}")
+        
+        self.current_folder_chooser_popup = popup
+        popup.open()
 
-    def select_folder(self, selection, folder_popup_instance):
+    def _find_first_image_in_folder(self, folder_path):
         """
-        Handles the selection of a folder from the FolderChooserPopup.
-        Updates the selected folder path and the corresponding label in the NewCollectionPopup.
-        Also attempts to pre-fill the collection name based on the folder name.
-        Args:
-            selection (list): A list containing the path(s) of the selected folder(s).
-                              Expected to contain one folder path.
-            folder_popup_instance: The instance of the FolderChooserPopup.
+        Recherche le premier fichier image dans le dossier spécifié.
+        Retourne le chemin de l'image ou None si aucune n'est trouvée.
         """
-        if selection:
-            self.selected_folder_path = selection[0]
-            print(f"Selected folder: {self.selected_folder_path}")
+        if not folder_path or not os.path.isdir(folder_path):
+            return None
+        
+        image_extensions = ('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp') # Extensions d'images courantes
+        try:
+            for item in os.listdir(folder_path):
+                item_path = os.path.join(folder_path, item)
+                if os.path.isfile(item_path) and item.lower().endswith(image_extensions):
+                    return item_path # Retourne le chemin complet de la première image trouvée
+        except OSError as e:
+            print(f"Error reading folder {folder_path}: {e}")
+            return None
+        return None # Aucune image trouvée
+
+    def confirm_folder_selection(self, selection):
+        """
+        Appelé lorsque l'utilisateur confirme la sélection d'un dossier.
+        Met à jour le chemin du dossier sélectionné et tente de trouver une image.
+        Pré-remplit également le nom de la collection.
+        """
+        if self.current_folder_chooser_popup:
+            self.current_folder_chooser_popup.dismiss()
+            self.current_folder_chooser_popup = None
+
+        if not selection:
+            return
+
+        selected_path = selection[0]
+
+        if os.path.isdir(selected_path):
+            self.selected_folder_path = selected_path
             if self.current_new_collection_popup:
-                # Update the label in the main collection popup
-                if self.current_new_collection_popup and hasattr(self.current_new_collection_popup.ids, 'selected_folder_label'):
-                    self.current_new_collection_popup.ids.selected_folder_label.text = self.selected_folder_path
+                popup_ids = self.current_new_collection_popup.ids
+                if hasattr(popup_ids, 'selected_folder_label'):
+                    popup_ids.selected_folder_label.text = selected_path
                 
-                # Attempt to pre-fill collection name based on folder name
-                if self.current_new_collection_popup and hasattr(self.current_new_collection_popup.ids, 'collection_name_input'):
-                    base_folder_name = os.path.basename(self.selected_folder_path)
-                    self.current_new_collection_popup.ids.collection_name_input.text = base_folder_name
-                    self.current_new_collection_popup.ids.collection_name_input.hint_text = "Name based on folder"
+                # Pré-remplir le nom de la collection basé sur le nom du dossier
+                if hasattr(popup_ids, 'collection_name_input'):
+                    base_folder_name = os.path.basename(selected_path)
+                    popup_ids.collection_name_input.text = base_folder_name
+                    # Optionnel: mettre à jour le hint_text si vous en utilisez un pour indiquer la source
+                    # popup_ids.collection_name_input.hint_text = "Nom basé sur le dossier"
 
-        folder_popup_instance.dismiss()
+                first_image = self._find_first_image_in_folder(selected_path)
+                if first_image:
+                    self.selected_image_path = first_image
+                    if hasattr(popup_ids, 'image_preview'):
+                        popup_ids.image_preview.source = first_image
+                else:
+                    self.selected_image_path = None
+                    if hasattr(popup_ids, 'image_preview'):
+                        popup_ids.image_preview.source = "assets/placeholder_popup.png"
+        else:
+            if self.current_new_collection_popup and hasattr(self.current_new_collection_popup.ids, 'selected_folder_label'):
+                self.current_new_collection_popup.ids.selected_folder_label.text = "Invalid folder selected"
+            self.selected_folder_path = None
 
-    def get_selected_folder_path(self):
-        """
-        Returns the currently selected folder path.
-        """
-        return self.selected_folder_path 
 
     def open_image_chooser_popup(self):
         """
-        Opens a popup dialog for the user to select an image for the new collection.
+        Ouvre la popup pour choisir une image.
         """
-        image_popup = ImageChooserPopup()
-        image_popup.open()
+        if self.current_image_chooser_popup:
+            self.current_image_chooser_popup.dismiss()
+        
+        popup = ImageChooserPopup()
+        try:
+            # Si un dossier a déjà été sélectionné, démarrer le sélecteur d'image dans ce dossier
+            # Sinon, démarrer dans le répertoire personnel
+            start_path = self.selected_folder_path if self.selected_folder_path and os.path.isdir(self.selected_folder_path) else os.path.expanduser("~")
+            
+            # Assurez-vous que votre ImageChooserPopup dans .kv a un FileChooser avec id 'image_filechooser'
+            if hasattr(popup.ids, 'image_filechooser') and hasattr(popup.ids.image_filechooser, 'path'):
+                popup.ids.image_filechooser.path = start_path
+            else:
+                # Si vous n'avez pas encore défini le FileChooser dans ImageChooserPopup, ce message s'affichera.
+                print("Warning: Could not set default path for ImageChooserPopup. 'image_filechooser' or its 'path' attribute not found.")
+        except Exception as e:
+            print(f"Error setting default path for ImageChooserPopup: {e}")
 
-    def select_image(self, selection, image_popup_instance):
+        self.current_image_chooser_popup = popup
+        popup.open()
+
+    def select_image(self, selection):
         """
         Handles the selection of an image from the ImageChooserPopup.
         Updates the selected image path and the preview image in the NewCollectionPopup.
         Args:
             selection (list): A list containing the path(s) of the selected image(s).
-                              Expected to contain one image path.
+            Expected to contain one image path.
             image_popup_instance: The instance of the ImageChooserPopup.
         """
-        if selection: 
-            self.selected_image_path = selection[0]
-            print(f"Selected image: {self.selected_image_path}")
+        if self.current_image_chooser_popup:
+            self.current_image_chooser_popup.dismiss()
+            self.current_image_chooser_popup = None
+
+        if not selection:
+            return
+
+        selected_path = selection[0]
+
+        if os.path.isfile(selected_path):
+            self.selected_image_path = selected_path
+            if self.current_new_collection_popup:
+                popup_ids = self.current_new_collection_popup.ids
+                if hasattr(popup_ids, 'image_preview'):
+                    popup_ids.image_preview.source = selected_path
+        else:
+            # Gérer le cas où la sélection n'est pas un fichier valide
             if self.current_new_collection_popup and hasattr(self.current_new_collection_popup.ids, 'image_preview'):
-                self.current_new_collection_popup.ids.image_preview.source = self.selected_image_path
-                self.current_new_collection_popup.ids.image_preview.reload() 
-            else:
-                print("Error: 'image_preview' not found in NewCollectionPopup ids or popup not available.")
-        image_popup_instance.dismiss()
+                self.current_new_collection_popup.ids.image_preview.source = "assets/placeholder_popup.png"
+            self.selected_image_path = None 
+
 
     def save_collection(self, nom, new_collection_popup_instance): 
         """
-        Saves a new collection to the database.
-        Retrieves the name, selected image, selected folder, and tags.
-        Performs validation and provides feedback to the user.
+        Saves the new collection to the database after validation,
+        including checking for duplicate collection names.
         Args:
-            nom (str): The name of the new collection.
+            nom (str): The name of the collection.
             new_collection_popup_instance: The instance of the NewCollectionPopup.
         """
-        print(f"Attempting to save collection: {nom}")
-        nom_collection = nom.strip() 
+        feedback_label = new_collection_popup_instance.ids.get('feedback_label')
 
-        if not nom_collection:
-            print("Collection name cannot be empty.")
-            if hasattr(new_collection_popup_instance.ids, 'feedback_label'): # Assuming feedback_label exists
-                new_collection_popup_instance.ids.feedback_label.text = "Collection name cannot be empty."
+        if not nom or not nom.strip():
+            if feedback_label:
+                feedback_label.text = "Collection name cannot be empty."
             return
 
         if not self.selected_folder_path:
-            print("Folder path cannot be empty.")
-            if hasattr(new_collection_popup_instance.ids, 'feedback_label'):
-                new_collection_popup_instance.ids.feedback_label.text = "Please select a folder."
+            if feedback_label:
+                feedback_label.text = "Folder path must be selected."
             return
 
-        if not self.selected_image_path:
-            print("Cover image path cannot be empty.")
-            if hasattr(new_collection_popup_instance.ids, 'feedback_label'):
-                new_collection_popup_instance.ids.feedback_label.text = "Please select a cover image."
-            return
+        # Vérifier si une collection avec le même nom existe déjà (ignorer la casse)
+        existing_collections = get_all_collections() # Assurez-vous que cette fonction est importée et renvoie les noms
+        # Ajuster le déballage pour correspondre aux 5 champs de la table Collections
+        for coll_id, coll_name, coll_path, coll_image, coll_date in existing_collections:
+            if nom.strip().lower() == coll_name.lower():
+                if feedback_label:
+                    feedback_label.text = f"A collection named '{nom.strip()}' already exists."
+                return
 
-        tags_string = ",".join(self.selected_tags_for_new_collection)
+        # Si selected_image_path est None ou vide, utiliser une image par défaut
+        # ou gérer comme une erreur si une image est obligatoire.
+        # Pour l'instant, nous allons permettre une image vide, mais la base de données pourrait avoir une contrainte NOT NULL.
+        # Assumons que add_collection_to_db peut gérer un selected_image_path None.
 
-        collection_id = add_collection_to_db(nom_collection, self.selected_folder_path, self.selected_image_path, tags_string)
+        try:
+            collection_id = add_collection_to_db(
+                nom.strip(),
+                self.selected_folder_path,
+                self.selected_image_path, # Peut être None
+                list(self.selected_tags_for_new_collection)
+            )
+            if collection_id:
+                if feedback_label:
+                    feedback_label.text = "Collection saved successfully!"
+                self.populate_collections_grid() # Rafraîchir la grille
+                # Fermer le popup après un court délai pour que l'utilisateur voie le message
+                Clock.schedule_once(lambda dt: new_collection_popup_instance.dismiss(), 1.5)
+                # Réinitialiser les champs pour la prochaine fois
+                self.selected_folder_path = None
+                self.selected_image_path = None
+                self.selected_tags_for_new_collection.clear()
+                if self.current_new_collection_popup:
+                    self.current_new_collection_popup.ids.collection_name_input.text = ""
+                    self.current_new_collection_popup.ids.selected_folder_label.text = "No folder selected"
+                    self.current_new_collection_popup.ids.image_preview.source = "assets/placeholder_popup.png"
+                    if hasattr(self.current_new_collection_popup.ids, 'tags_button'):
+                        self.current_new_collection_popup.ids.tags_button.text = "Select Tags"
 
-        if collection_id:
-            print(f"Collection '{nom_collection}' added successfully with ID: {collection_id}")
-            if hasattr(new_collection_popup_instance.ids, 'feedback_label'):
-                new_collection_popup_instance.ids.feedback_label.text = f"Collection '{nom_collection}' added successfully."
-            new_collection_popup_instance.dismiss()
-            self.populate_collections_grid()
-        else:
-            print(f"Error saving collection '{nom_collection}'.")
-            if hasattr(new_collection_popup_instance.ids, 'feedback_label'):
-                new_collection_popup_instance.ids.feedback_label.text = "Error saving collection."
+            else:
+                if feedback_label:
+                    feedback_label.text = "Error saving collection to database."
+        except Exception as e:
+            print(f"Exception in save_collection: {e}")
+            if feedback_label:
+                feedback_label.text = "An unexpected error occurred."
+
 
     def populate_collections_grid(self):
         """
@@ -441,6 +541,7 @@ class VisualCollectionApp(App):
             )
             grid.add_widget(card)
         print(f"Populated grid with {len(collections_data)} collections.")
+
 
     def open_collection_folder(self, folder_path):
         """
